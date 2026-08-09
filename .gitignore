@@ -1,0 +1,22 @@
+# Data files (generated at runtime, not committed)
+data/
+*.json
+
+# Keep seed data (initial feed history for first run)
+!seed/
+!seed/*.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
