@@ -1,0 +1,85 @@
+name: Update Investment Dashboard
+
+on:
+  schedule:
+    # Every 10 minutes
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create data directory
+        run: mkdir -p data
+
+      - name: Restore cached feed history
+        uses: actions/cache@v4
+        with:
+          path: data/feed_history.json
+          key: feed-history-${{ github.run_id }}
+          restore-keys: |
+            feed-history-
+
+      - name: Restore cached eastmoney state
+        uses: actions/cache@v4
+        with:
+          path: data/eastmoney_state.json
+          key: eastmoney-state-${{ github.run_id }}
+          restore-keys: |
+            eastmoney-state-
+
+      - name: Run pipeline
+        env:
+          ZSXQ_COOKIE: ${{ secrets.ZSXQ_COOKIE }}
+          ZSXQ_GROUP_ID: ${{ secrets.ZSXQ_GROUP_ID }}
+        run: python3 run_pipeline.py
+
+      - name: Save feed history cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/feed_history.json
+          key: feed-history-${{ github.run_id }}
+
+      - name: Save eastmoney state cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/eastmoney_state.json
+          key: eastmoney-state-${{ github.run_id }}
+
+      - name: Deploy to GitHub Pages
+        if: success()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git checkout --orphan gh-pages-temp
+          git rm -rf . 2>/dev/null || true
+          cp data/touyan_workspace_final.html index.html
+          touch .nojekyll
+          git add index.html .nojekyll
+          git commit -m "Update dashboard $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git branch -D gh-pages 2>/dev/null || true
+          git branch -m gh-pages
+          git push origin gh-pages --force
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Pipeline failed! Check logs for details."
+          echo "If ZSXQ_COOKIE expired, update the GitHub Secret."
