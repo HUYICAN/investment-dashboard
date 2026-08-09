@@ -1,0 +1,5 @@
+# No external dependencies required!
+# All scripts use Python standard library only:
+# - json, os, re, sys, sqlite3, subprocess
+# - urllib.request, urllib.error
+# - datetime, html, argparse, pathlib
